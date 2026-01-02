@@ -84,21 +84,13 @@ docker compose logs -f odoo
 
 ### 5. 初始化 Odoo
 
-访问 https://odoo.guohesky.com/web/database/manager
+访问 https://odoo.guohesky.com
 
-1. 填写数据库信息：
-   - Master Password: `odoo.conf` 中设置的 `admin_passwd`
-   - Database Name: `odoo`（需与子域名匹配，因为 dbfilter = ^%d$）
-   - Email: 管理员邮箱
-   - Password: 管理员密码
-   - Language: 简体中文
-   - Country: China
+1. 使用 `odoo.conf` 中设置的 `admin_passwd` 作为 Master Password
+2. 使用管理员邮箱和密码登录
+3. 语言选择：简体中文，国家：China
 
-2. 勾选 "Load demonstration data" 为 **否**（生产环境）
-
-3. 点击 "Create database" 等待初始化
-
-> **注意**：数据库名必须是 `odoo`，因为配置了 `dbfilter = ^%d$` 会根据子域名 `odoo.guohesky.com` 自动匹配。
+> **注意**：首次启动后建议注释掉 `odoo.conf` 中的 `init = base` 行。
 
 ## 常用命令
 
@@ -130,29 +122,48 @@ docker compose up -d
 
 ## 备份与恢复
 
-> 注意：数据存储在 Docker 命名卷中，备份方式如下
+### 自动备份到 Google Drive（推荐）
 
-### 数据库备份
+使用 Rclone 自动备份到 Google Drive，每日执行，保留 7 天。
 
+**1. 安装 Rclone**
 ```bash
-# 备份
-docker exec odoo-db pg_dump -U odoo odoo > backup_$(date +%Y%m%d).sql
-
-# 恢复
-cat backup_20250102.sql | docker exec -i odoo-db psql -U odoo odoo
+curl https://rclone.org/install.sh | sudo bash
 ```
 
-### Filestore 备份
-
+**2. 配置 Google Drive**
 ```bash
-# 备份（从命名卷导出）
-docker run --rm -v guohesky-odoo_odoo-web-data:/data -v $(pwd):/backup alpine \
-  tar czf /backup/filestore_$(date +%Y%m%d).tar.gz -C /data .
+# 在本地电脑运行（需要浏览器授权）
+rclone config
+# 选择: n (new remote) → 输入名称: gdrive → 选择: drive → scope 选 3 (drive.file) → 按提示完成授权
 
-# 恢复
-docker run --rm -v guohesky-odoo_odoo-web-data:/data -v $(pwd):/backup alpine \
-  tar xzf /backup/filestore_20250102.tar.gz -C /data
+# 在服务器创建目录并复制配置（需指定 SSH key）
+ssh -i ~/.ssh/你的私钥 ubuntu@服务器IP "mkdir -p ~/.config/rclone"
+scp -i ~/.ssh/你的私钥 ~/.config/rclone/rclone.conf ubuntu@服务器IP:~/.config/rclone/
 ```
+
+**3. 设置环境变量**
+```bash
+# 添加到 ~/.bashrc 或 /etc/environment
+export ODOO_MASTER_PASSWORD="你的admin_passwd密码"
+```
+
+**4. 添加定时任务**
+```bash
+crontab -e
+# 添加：每天凌晨3点备份
+0 3 * * * /path/to/guohesky-odoo/backup.sh >> /var/log/odoo-backup.log 2>&1
+```
+
+**5. 测试备份**
+```bash
+chmod +x backup.sh
+./backup.sh
+```
+
+### 手动恢复
+
+从 Google Drive 下载 zip 文件，访问 `/web/database/manager` 使用 Restore 功能。
 
 ## 自定义模块开发
 
