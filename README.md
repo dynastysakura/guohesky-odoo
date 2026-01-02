@@ -45,17 +45,25 @@ docker compose version
 # 克隆仓库
 git clone https://github.com/dynastysakura/guohesky-odoo.git
 cd guohesky-odoo
+```
 
-# 配置环境变量
+**配置密码（必须修改两个地方）**：
+
+```bash
+# 1. 数据库密码（PostgreSQL）
 cp .env.example .env
-nano .env  # 设置 POSTGRES_PASSWORD
+nano .env
+# 修改: POSTGRES_PASSWORD=你的数据库密码
 
-# 修改 admin_passwd（重要！）
+# 2. Odoo 管理主密码（用于创建/删除数据库）
 nano odoo.conf
-# 将 admin_passwd = CHANGE_ME_IMMEDIATELY 改为强密码
-# 可用 openssl rand -base64 32 生成
+# 修改: admin_passwd = 你的管理密码
+# 可用 openssl rand -base64 32 生成随机密码
+```
 
-# 启动服务
+**启动服务**：
+
+```bash
 docker compose up -d
 
 # 查看 Caddy 日志，确认证书获取成功
@@ -67,7 +75,14 @@ docker compose logs -f odoo
 # 看到 "HTTP service running" 表示成功
 ```
 
-### 4. 初始化 Odoo
+### 4. 开启 Cloudflare Proxy（可选，推荐）
+
+证书获取成功后：
+1. 回到 Cloudflare Dashboard
+2. 将 DNS 记录的代理状态改为 **Proxied（橙色云朵）**
+3. SSL/TLS → 加密模式选择 **Full (Strict)**
+
+### 5. 初始化 Odoo
 
 访问 https://odoo.guohesky.com/web/database/manager
 
