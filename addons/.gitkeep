@@ -1,5 +1,0 @@
-# 自定义 Odoo 模块目录
-# 将你的自定义模块放在此目录下
-
-# 创建新模块:
-# docker exec -it odoo-app odoo scaffold my_module /mnt/extra-addons
