@@ -1,4 +1,4 @@
-odoo.guohesky.com {
+odoo.guohesky.com, guohesky.com, www.guohesky.com {
     # Caddy 自动添加 X-Forwarded-For/Proto/Host headers
     reverse_proxy odoo:8069
 
