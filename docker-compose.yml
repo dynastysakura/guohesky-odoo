@@ -8,7 +8,6 @@ services:
       - POSTGRES_USER=odoo
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
-      # 使用命名卷，Docker 自动处理 UID/GID 权限
       - odoo-db-data:/var/lib/postgresql/data
     networks:
       - odoo-network
@@ -30,9 +29,7 @@ services:
       - USER=odoo
       - PASSWORD=${POSTGRES_PASSWORD}
     volumes:
-      # 使用命名卷存储 Session 和附件，避免权限问题
       - odoo-web-data:/var/lib/odoo
-      # 配置文件和自定义模块用本地映射，方便修改
       - ./odoo.conf:/etc/odoo/odoo.conf:ro
       - ./addons:/mnt/extra-addons:ro
     ports:
@@ -61,7 +58,7 @@ networks:
     driver: bridge
 
 volumes:
-  odoo-db-data:    # PostgreSQL 数据
-  odoo-web-data:   # Odoo 附件和 Session
-  caddy_data:      # SSL 证书
+  odoo-db-data:
+  odoo-web-data:
+  caddy_data:
   caddy_config:
