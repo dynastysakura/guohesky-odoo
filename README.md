@@ -150,8 +150,11 @@ export ODOO_MASTER_PASSWORD="你的admin_passwd密码"
 
 **4. 添加定时任务**
 ```bash
+# 设置服务器时区（cron 使用服务器时区）
+sudo timedatectl set-timezone Asia/Tokyo
+
 crontab -e
-# 添加：每天凌晨3点备份
+# 添加：每天凌晨3点备份（日本时间）
 0 3 * * * /path/to/guohesky-odoo/backup.sh >> /var/log/odoo-backup.log 2>&1
 ```
 
@@ -161,9 +164,58 @@ chmod +x backup.sh
 ./backup.sh
 ```
 
-### 手动恢复
+### 恢复备份
 
-从 Google Drive 下载 zip 文件，访问 `/web/database/manager` 使用 Restore 功能。
+生产环境默认禁用了 Database Manager（`list_db = False`），恢复时需要临时解锁。
+
+**方法1：GUI 恢复（推荐）**
+
+```bash
+# 1. 编辑 odoo.conf，注释掉这两行：
+nano odoo.conf
+# ; db_name = odoo
+# ; list_db = False
+
+# 2. 重启 Odoo
+docker compose restart odoo
+
+# 3. 访问 https://你的域名/web/database/manager
+#    - 输入 Master Password
+#    - 删除空的 "odoo" 数据库
+#    - 点击 Restore，上传备份 zip，数据库名填 "odoo"
+
+# 4. 恢复完成后，取消注释那两行
+nano odoo.conf
+# db_name = odoo
+# list_db = False
+
+# 5. 重启生效
+docker compose restart odoo
+```
+
+**方法2：命令行恢复（无需改配置）**
+
+```bash
+# 1. 停止 Odoo
+docker compose stop odoo
+
+# 2. 删除旧数据库并创建新的
+docker exec odoo-db psql -U odoo -d postgres -c "DROP DATABASE IF EXISTS odoo;"
+docker exec odoo-db psql -U odoo -d postgres -c "CREATE DATABASE odoo OWNER odoo;"
+
+# 3. 解压备份并恢复数据库
+unzip odoo_backup_xxx.zip -d /tmp/restore
+cat /tmp/restore/dump.sql | docker exec -i odoo-db psql -U odoo odoo
+
+# 4. 恢复 filestore
+docker cp /tmp/restore/filestore/. odoo-app:/var/lib/odoo/filestore/odoo/
+
+# 5. 启动 Odoo
+docker compose start odoo
+
+# 6. 清理临时文件
+rm -rf /tmp/restore
+```
 
 ## 自定义模块开发
 
