@@ -1,0 +1,15 @@
+odoo.guohesky.com {
+    # Caddy 自动添加 X-Forwarded-For/Proto/Host headers
+    reverse_proxy odoo:8069
+
+    # 启用压缩
+    encode gzip zstd
+
+    # 访问日志（可选，调试时有用）
+    log {
+        output file /data/logs/access.log {
+            roll_size 10mb
+            roll_keep 5
+        }
+    }
+}

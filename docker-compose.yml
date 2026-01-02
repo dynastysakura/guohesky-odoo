@@ -1,0 +1,67 @@
+services:
+  db:
+    image: postgres:16
+    container_name: odoo-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=odoo
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      # 使用命名卷，Docker 自动处理 UID/GID 权限
+      - odoo-db-data:/var/lib/postgresql/data
+    networks:
+      - odoo-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U odoo"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  odoo:
+    image: odoo:19
+    container_name: odoo-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - HOST=db
+      - USER=odoo
+      - PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      # 使用命名卷存储 Session 和附件，避免权限问题
+      - odoo-web-data:/var/lib/odoo
+      # 配置文件和自定义模块用本地映射，方便修改
+      - ./odoo.conf:/etc/odoo/odoo.conf:ro
+      - ./addons:/mnt/extra-addons:ro
+    ports:
+      - "127.0.0.1:8069:8069"
+    networks:
+      - odoo-network
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: odoo-caddy
+    restart: unless-stopped
+    depends_on:
+      - odoo
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - odoo-network
+
+networks:
+  odoo-network:
+    driver: bridge
+
+volumes:
+  odoo-db-data:    # PostgreSQL 数据
+  odoo-web-data:   # Odoo 附件和 Session
+  caddy_data:      # SSL 证书
+  caddy_config:

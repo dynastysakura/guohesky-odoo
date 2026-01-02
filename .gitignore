@@ -1,0 +1,27 @@
+# 环境变量（包含密码）
+.env
+
+# 数据目录
+data/
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+
+# 日志
+*.log
+
+# 临时文件
+*.tmp
+*.bak
