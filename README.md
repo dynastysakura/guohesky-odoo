@@ -20,28 +20,7 @@ docker --version
 docker compose version
 ```
 
-### 2. 部署 Odoo
-
-```bash
-# 克隆仓库
-git clone https://github.com/你的用户名/guohesky-odoo.git
-cd guohesky-odoo
-
-# 创建自定义模块目录（数据卷由 Docker 自动管理）
-mkdir -p addons
-
-# 配置环境变量
-cp .env.example .env
-nano .env  # 编辑密码
-
-# 启动服务
-docker compose up -d
-
-# 查看日志（看到 "HTTP service running" 表示成功）
-docker compose logs -f odoo
-```
-
-### 3. 配置 Cloudflare DNS
+### 2. 配置 Cloudflare DNS（先于启动服务！）
 
 1. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com)
 2. 选择 `guohesky.com` 域名
@@ -49,27 +28,46 @@ docker compose logs -f odoo
    - 类型: `A`
    - 名称: `odoo`
    - IPv4 地址: `你的服务器IP`
-   - 代理状态: 先选 "DNS only"（灰色云朵）
+   - 代理状态: **必须选 "DNS only"（灰色云朵）**
 
-4. 等待 Caddy 自动获取 SSL 证书后，可以开启橙色云朵代理
+4. 验证 DNS 生效：
+   ```bash
+   # 在服务器上测试
+   dig odoo.guohesky.com +short
+   # 应该返回你的服务器 IP
+   ```
 
-### 4. 安全配置（重要！）
+> **重要**：必须先配置 DNS，否则 Caddy 无法获取 SSL 证书！
 
-部署后立即修改 `odoo.conf` 中的 `admin_passwd`：
+### 3. 部署 Odoo
 
 ```bash
-# 生成随机密码
-openssl rand -base64 32
+# 克隆仓库
+git clone https://github.com/dynastysakura/guohesky-odoo.git
+cd guohesky-odoo
 
-# 编辑配置文件
+# 配置环境变量
+cp .env.example .env
+nano .env  # 设置 POSTGRES_PASSWORD
+
+# 修改 admin_passwd（重要！）
 nano odoo.conf
-# 将 admin_passwd = CHANGE_ME_IMMEDIATELY 改为生成的密码
+# 将 admin_passwd = CHANGE_ME_IMMEDIATELY 改为强密码
+# 可用 openssl rand -base64 32 生成
 
-# 重启 Odoo 使配置生效
-docker compose restart odoo
+# 启动服务
+docker compose up -d
+
+# 查看 Caddy 日志，确认证书获取成功
+docker compose logs caddy
+# 看到 "certificate obtained successfully" 表示成功
+
+# 查看 Odoo 日志
+docker compose logs -f odoo
+# 看到 "HTTP service running" 表示成功
 ```
 
-### 5. 初始化 Odoo
+### 4. 初始化 Odoo
 
 访问 https://odoo.guohesky.com/web/database/manager
 
@@ -107,6 +105,9 @@ docker compose logs -f db
 # 进入 Odoo 容器
 docker exec -it odoo-app bash
 
+# 更新代码后重启
+git pull && docker compose restart
+
 # 更新 Odoo 镜像
 docker compose pull odoo
 docker compose up -d
@@ -120,10 +121,10 @@ docker compose up -d
 
 ```bash
 # 备份
-docker exec odoo-db pg_dump -U odoo guohesky > backup_$(date +%Y%m%d).sql
+docker exec odoo-db pg_dump -U odoo odoo > backup_$(date +%Y%m%d).sql
 
 # 恢复
-cat backup_20250102.sql | docker exec -i odoo-db psql -U odoo guohesky
+cat backup_20250102.sql | docker exec -i odoo-db psql -U odoo odoo
 ```
 
 ### Filestore 备份
@@ -172,13 +173,16 @@ docker compose restart odoo
 ### Caddy 无法获取证书
 
 确保：
-- 域名 DNS 已正确指向服务器 IP
+- 域名 DNS 已正确指向服务器 IP（`dig odoo.guohesky.com +short`）
 - 服务器防火墙开放 80/443 端口
-- Cloudflare 代理状态为 "DNS only"
+- Cloudflare 代理状态为 "DNS only"（灰色云朵）
 
 ```bash
 # 检查 Caddy 日志
 docker compose logs caddy
+
+# DNS 配置后重启 Caddy 重新获取证书
+docker compose restart caddy
 ```
 
 ### Odoo 启动失败
