@@ -20,6 +20,21 @@ docker --version
 docker compose version
 ```
 
+**Oracle Cloud 防火墙配置**
+
+Oracle Cloud 需要同时配置两层防火墙：
+
+1. **VCN 安全列表**（云控制台）：
+   - 进入 Networking → Virtual Cloud Networks → 你的 VCN → Security Lists
+   - 添加入站规则：TCP 80 和 443，源 0.0.0.0/0
+
+2. **系统防火墙**（服务器内）：
+   ```bash
+   sudo iptables -I INPUT 6 -p tcp --dport 80 -j ACCEPT
+   sudo iptables -I INPUT 6 -p tcp --dport 443 -j ACCEPT
+   sudo netfilter-persistent save
+   ```
+
 ### 2. 配置 Cloudflare DNS（先于启动服务！）
 
 1. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com)
