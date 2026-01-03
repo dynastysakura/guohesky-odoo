@@ -33,7 +33,7 @@ docker compose version
 4. 验证 DNS 生效：
    ```bash
    # 在服务器上测试
-   dig odoo.guohesky.com +short
+   dig www.guohesky.com +short
    # 应该返回你的服务器 IP
    ```
 
@@ -84,7 +84,7 @@ docker compose logs -f odoo
 
 ### 5. 初始化 Odoo
 
-访问 https://odoo.guohesky.com
+访问 https://www.guohesky.com
 
 1. 使用 `odoo.conf` 中设置的 `admin_passwd` 作为 Master Password
 2. 使用管理员邮箱和密码登录
@@ -251,7 +251,7 @@ docker compose restart odoo
 ### Caddy 无法获取证书
 
 确保：
-- 域名 DNS 已正确指向服务器 IP（`dig odoo.guohesky.com +short`）
+- 域名 DNS 已正确指向服务器 IP（`dig www.guohesky.com +short`）
 - 服务器防火墙开放 80/443 端口
 - Cloudflare 代理状态为 "DNS only"（灰色云朵）
 
