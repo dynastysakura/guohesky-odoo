@@ -7,6 +7,18 @@ services:
       - POSTGRES_DB=postgres
       - POSTGRES_USER=odoo
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_buffers=192MB"
+      - "-c"
+      - "work_mem=8MB"
+      - "-c"
+      - "maintenance_work_mem=64MB"
+      - "-c"
+      - "effective_cache_size=384MB"
+      - "-c"
+      - "max_connections=50"
     volumes:
       - odoo-db-data:/var/lib/postgresql/data
     networks:
