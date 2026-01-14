@@ -35,6 +35,24 @@ Oracle Cloud 需要同时配置两层防火墙：
    sudo netfilter-persistent save
    ```
 
+**腾讯云防火墙配置**
+
+1. **安全组**（云控制台）：
+   - 进入 云服务器 → 安全组 → 选择实例关联的安全组
+   - 添加入站规则：TCP 80 和 443，源 0.0.0.0/0
+
+2. **配置 Docker 镜像加速器**（推荐，加快镜像拉取）：
+   ```bash
+   sudo mkdir -p /etc/docker
+   sudo tee /etc/docker/daemon.json <<EOF
+   {
+     "registry-mirrors": ["https://mirror.ccs.tencentyun.com"]
+   }
+   EOF
+   sudo systemctl daemon-reload
+   sudo systemctl restart docker
+   ```
+
 ### 2. 配置 Cloudflare DNS（先于启动服务！）
 
 1. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com)
@@ -137,16 +155,47 @@ docker compose up -d
 
 ## 备份与恢复
 
-### 自动备份到 Google Drive（推荐）
+### 自动备份到云存储（推荐）
 
-使用 Rclone 自动备份到 Google Drive，每日执行，保留 7 天。
+使用 Rclone 自动备份到云存储，每日执行，保留 7 天。
+
+**支持的存储后端**：
+- 腾讯云 COS（国内推荐）
+- Google Drive（海外推荐）
 
 **1. 安装 Rclone**
 ```bash
 curl https://rclone.org/install.sh | sudo bash
 ```
 
-**2. 配置 Google Drive**
+**2. 配置云存储**
+
+<details>
+<summary><strong>腾讯云 COS（国内推荐）</strong></summary>
+
+```bash
+rclone config
+# n (new remote)
+# 名称: cos
+# 存储类型: 选择 "Tencent COS" (输入对应数字)
+# env_auth: false
+# access_key_id: 你的 SecretId（从腾讯云控制台获取）
+# secret_access_key: 你的 SecretKey
+# endpoint: cos.ap-shanghai.myqcloud.com（根据存储桶地域选择）
+# acl: 留空（回车）
+# 其他选项默认即可
+
+# 测试连接
+rclone lsd cos:
+```
+
+获取密钥：腾讯云控制台 → 访问管理 → 访问密钥 → API密钥管理
+
+</details>
+
+<details>
+<summary><strong>Google Drive（海外）</strong></summary>
+
 ```bash
 # 在本地电脑运行（需要浏览器授权）
 rclone config
@@ -157,23 +206,32 @@ ssh -i ~/.ssh/你的私钥 ubuntu@服务器IP "mkdir -p ~/.config/rclone"
 scp -i ~/.ssh/你的私钥 ~/.config/rclone/rclone.conf ubuntu@服务器IP:~/.config/rclone/
 ```
 
+</details>
+
 **3. 设置环境变量**
 ```bash
 # 添加到 ~/.bashrc 或 /etc/environment
 export ODOO_MASTER_PASSWORD="你的admin_passwd密码"
 ```
 
-**4. 添加定时任务**
+**4. 修改备份脚本配置**
 ```bash
-# 设置服务器时区（cron 使用服务器时区）
-sudo timedatectl set-timezone Asia/Tokyo
+nano backup.sh
+# 腾讯云 COS: 确保 RCLONE_REMOTE="cos"
+# Google Drive: 改为 RCLONE_REMOTE="gdrive"
+```
+
+**5. 添加定时任务**
+```bash
+# 设置服务器时区
+sudo timedatectl set-timezone Asia/Shanghai
 
 crontab -e
-# 添加：每天凌晨3点备份（日本时间）
+# 添加：每天凌晨3点备份（北京时间）
 0 3 * * * /path/to/guohesky-odoo/backup.sh >> /var/log/odoo-backup.log 2>&1
 ```
 
-**5. 测试备份**
+**6. 测试备份**
 ```bash
 chmod +x backup.sh
 ./backup.sh

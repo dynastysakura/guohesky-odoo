@@ -1,11 +1,18 @@
 #!/bin/bash
 # =============================================================================
-# Odoo 自动备份脚本 - 使用 Rclone 上传到 Google Drive
+# Odoo 自动备份脚本 - 支持多种云存储
 # =============================================================================
+# 支持的存储后端:
+#   - 腾讯云 COS（国内推荐）
+#   - Google Drive（海外推荐）
+#
 # 用法:
-#   1. 配置 Rclone: rclone config (创建名为 "gdrive" 的 remote)
-#   2. 测试运行: ./backup.sh
-#   3. 添加到 crontab: crontab -e
+#   1. 配置 Rclone: rclone config
+#      - 腾讯云 COS: 创建名为 "cos" 的 remote
+#      - Google Drive: 创建名为 "gdrive" 的 remote
+#   2. 设置环境变量: export ODOO_MASTER_PASSWORD="你的密码"
+#   3. 测试运行: ./backup.sh
+#   4. 添加到 crontab: crontab -e
 #      0 3 * * * /path/to/guohesky-odoo/backup.sh >> /var/log/odoo-backup.log 2>&1
 # =============================================================================
 
@@ -17,9 +24,15 @@ ODOO_URL="http://localhost:8069"
 MASTER_PASSWORD="${ODOO_MASTER_PASSWORD:-CHANGE_ME}"  # 建议通过环境变量传入
 DB_NAME="odoo"
 
-# Rclone 配置
-RCLONE_REMOTE="gdrive"           # rclone config 中配置的 remote 名称
-REMOTE_FOLDER="odoo-backups"     # Google Drive 中的文件夹名
+# ===================== 存储配置（选择其一）=====================
+# --- 腾讯云 COS（国内推荐）---
+RCLONE_REMOTE="cos"              # rclone config 中配置的 remote 名称
+REMOTE_FOLDER="odoo-backups"     # COS 存储桶中的文件夹名
+
+# --- Google Drive（海外，需科学上网）---
+# RCLONE_REMOTE="gdrive"
+# REMOTE_FOLDER="odoo-backups"
+# ========================================================
 
 # 本地临时目录
 LOCAL_BACKUP_DIR="/tmp/odoo-backups"
@@ -56,15 +69,15 @@ if [ "${BACKUP_SIZE}" -lt 1000 ]; then
 fi
 echo "    备份大小: $(echo "scale=2; ${BACKUP_SIZE}/1024/1024" | bc) MB"
 
-# 2. 上传到 Google Drive
-echo "[2/4] 正在上传到 Google Drive..."
+# 2. 上传到云存储
+echo "[2/4] 正在上传到云存储 (${RCLONE_REMOTE})..."
 rclone copy "${LOCAL_BACKUP_PATH}" "${RCLONE_REMOTE}:${REMOTE_FOLDER}/" --progress
 
 # 3. 删除本地临时文件
 echo "[3/4] 清理本地临时文件..."
 rm -f "${LOCAL_BACKUP_PATH}"
 
-# 4. 删除 Google Drive 上超过 7 天的旧备份
+# 4. 删除云存储上超过 7 天的旧备份
 echo "[4/4] 清理 ${RETENTION_DAYS} 天前的旧备份..."
 rclone delete "${RCLONE_REMOTE}:${REMOTE_FOLDER}/" --min-age "${RETENTION_DAYS}d" -v
 
